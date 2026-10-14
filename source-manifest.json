@@ -1,5 +1,5 @@
 {
-  "published": false,
+  "published": true,
   "credentials_included": false,
   "profile_public_key_sha256": "7fe3529ea5b64f4aa3712041f4d63f1333cad81072b4ce1039df4070de01d6f6",
   "files": [
@@ -10,8 +10,8 @@
     },
     {
       "path": ".github/workflows/windows-native.yml",
-      "bytes": 5551,
-      "sha256": "14dccd3dd3bfe299d4c555204ce4efe435d425c8b90a460134d82f310aecb7a2"
+      "bytes": 6605,
+      "sha256": "8dc39c6dd92cd733481b56080f0b6b8dda9a8d8151933064085ab2672696623e"
     },
     {
       "path": ".gitignore",
@@ -25,8 +25,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 7436,
-      "sha256": "ac2e02dd9a3842b4230e7e71f7a6938a9abcfa97ecd358eb9b576f29589e754c"
+      "bytes": 8460,
+      "sha256": "d328828de811da875bc360fe813ff4590b93468a6599dc7e21c3ded8de18cab7"
     },
     {
       "path": "apply_patch.py",
@@ -85,8 +85,8 @@
     },
     {
       "path": "profile/src/lib.rs",
-      "bytes": 29981,
-      "sha256": "e754969857781c6e3ad06fea7e89ca4accb0407eb54fe9e78f423c6a0bd6277e"
+      "bytes": 30853,
+      "sha256": "ed46bea30114d49470bab379fac6456c5c6a75ef55bf2f8ba752fc9631d335e7"
     },
     {
       "path": "profile-public-key.bin",
@@ -95,8 +95,8 @@
     },
     {
       "path": "source_files.py",
-      "bytes": 1477,
-      "sha256": "98793aec50641617196d3a1060eb46298e20ab694cdd7ff4dc1807449eab2f80"
+      "bytes": 1532,
+      "sha256": "a600a98474ac49ad1e8c765a6a32a09e30b7ac186764327b1bede0fbc1014a4e"
     },
     {
       "path": "tests/test_apply_patch.py",
@@ -114,14 +114,25 @@
       "sha256": "c65462644909ca233bd5332855b36dd5f273c4dc26c7d1ce82868ed708a4ea44"
     },
     {
+      "path": "tests/windows_smoke_profile.py",
+      "bytes": 5669,
+      "sha256": "7270b4848ab6511bb6b7ece509ecdd972dac8716fbff17435206dbebe0f8ec35"
+    },
+    {
       "path": "windows-build.ps1",
       "bytes": 12848,
       "sha256": "9d45b820da3c69cad7e0ef7ae7798d68a6832fe3063936a7866019db9ce2a431"
     },
     {
+      "path": "windows-smoke.ps1",
+      "bytes": 24652,
+      "sha256": "a4aa85dff70feb644e0f9b91690081561a64957c93d81f45f7a2f21979d6a0e3"
+    },
+    {
       "path": "workflows/windows-native.yml",
-      "bytes": 5551,
-      "sha256": "14dccd3dd3bfe299d4c555204ce4efe435d425c8b90a460134d82f310aecb7a2"
+      "bytes": 6605,
+      "sha256": "8dc39c6dd92cd733481b56080f0b6b8dda9a8d8151933064085ab2672696623e"
     }
-  ]
+  ],
+  "repository": "https://github.com/azimmomin123/retailcontrol-remote-support"
 }

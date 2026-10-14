@@ -668,18 +668,37 @@ mod tests {
     fn overlay_reads_large_sparse_binary_and_only_last_footer() {
         let (_temp, path) = directory();
         let executable = path.join("synthetic.exe");
-        let mut file = File::create(&executable).unwrap();
-        file.set_len(1 << 30).unwrap();
         let expected = envelope(&profile());
-        append_overlay(&mut file, &expected);
+        {
+            let mut file = File::create(&executable).unwrap();
+            file.set_len(1 << 30).unwrap();
+            append_overlay(&mut file, &expected);
+        } // Release the writer before the Windows reader denies write sharing.
         let (p, actual) = read_overlay(&executable, &key()).unwrap();
         assert_eq!(p, profile());
         assert_eq!(actual, expected);
-        file.write_all(b"extra trailer").unwrap();
+        {
+            let mut file = OpenOptions::new().append(true).open(&executable).unwrap();
+            file.write_all(b"extra trailer").unwrap();
+        }
         assert_eq!(
             read_overlay(&executable, &key()).unwrap_err(),
             Error::MissingProfile
         );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn overlay_refuses_existing_writer_until_handle_is_closed() {
+        let (_temp, path) = directory();
+        let executable = path.join("synthetic.exe");
+        let mut writer = File::create(&executable).unwrap();
+        append_overlay(&mut writer, &envelope(&profile()));
+        // FILE_SHARE_READ deliberately conflicts with an existing write handle.
+        // Keep the runtime policy: verification must not share a mutable file.
+        assert_eq!(read_overlay(&executable, &key()).unwrap_err(), Error::Io);
+        drop(writer);
+        assert_eq!(read_overlay(&executable, &key()).unwrap().0, profile());
     }
 
     #[test]

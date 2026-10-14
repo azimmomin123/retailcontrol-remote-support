@@ -72,6 +72,11 @@ uploads data, triggers CI, or changes the public store download.
 The first complete Windows compile is still required to establish build fit and
 compatibility. No claim of a working EXE follows from local profile tests.
 
+Public customization source and free Windows builds are maintained at
+[retailcontrol-remote-support](https://github.com/azimmomin123/retailcontrol-remote-support).
+The store preset and profile signing key are applied locally after downloading
+the generic build; they are never supplied to GitHub.
+
 ## Reproduce
 
 Pinned RustDesk commit: `6c578292e8ebbbec708b76986ba8c4bc7c509747`.
@@ -135,6 +140,17 @@ Confirm each against the final file hash before enabling store distribution.
 The current code preserves native installation behavior; it does not establish
 those results. Existing per-computer password overrides and upgrades also need
 explicit verification.
+
+The public Windows workflow also runs `windows-smoke.ps1` after freezing the
+generic release files. It builds an isolated test copy using a newly generated
+synthetic key, with loopback routing, and checks native installation, service
+startup and restart, profile persistence and rejection, and uninstall. The
+original release files are checked for changes. Only the fixed
+`windows-smoke.json` result is published; test credentials and test binaries
+remain on the disposable runner. GitHub's Windows runner has UAC disabled, so
+this cannot establish the real store's UAC, SmartScreen, Mac connection, or
+reboot experience. Actual CI success is required; the presence of this harness
+alone does not establish a passing result.
 
 The payload includes `LICENSE.txt`, `SOURCE.txt` and the exact patched source
 archive. Source export excludes the preset and private signing key; they are not

@@ -87,13 +87,21 @@ jobs:
       - name: Configure MSBuild
         uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
 
-      - name: Compile and test the public base client
+      - name: Compile and test the public base client and Windows installation
         run: |
           & "$env:GITHUB_WORKSPACE/customization/windows-build.ps1" `
             -SourceDir "$env:GITHUB_WORKSPACE/upstream" `
             -NativeDir "$env:GITHUB_WORKSPACE/customization" `
             -PublicKeyFile "$env:GITHUB_WORKSPACE/customization/profile-public-key.bin" `
             -OutputDir "$env:GITHUB_WORKSPACE/release"
+          & "$env:GITHUB_WORKSPACE/customization/windows-smoke.ps1" `
+            -SourceDir "$env:GITHUB_WORKSPACE/upstream" `
+            -NativeDir "$env:GITHUB_WORKSPACE/customization" `
+            -OutputDir "$env:GITHUB_WORKSPACE/release"
+          $report = Join-Path $env:GITHUB_WORKSPACE 'release/windows-smoke.json'
+          if (-not (Test-Path -LiteralPath $report -PathType Leaf)) { throw 'Windows installation test report is missing.' }
+          $hash = (Get-FileHash -LiteralPath $report -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  windows-smoke.json" | Add-Content -LiteralPath "$env:GITHUB_WORKSPACE/release/SHA256SUMS" -Encoding utf8
 
       - name: Publish generic release files
         if: ${{ inputs.publish_release }}
@@ -105,7 +113,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $tag = "native-$env:GITHUB_RUN_NUMBER-$env:GITHUB_RUN_ATTEMPT"
           $directory = Join-Path $env:GITHUB_WORKSPACE 'release'
-          $names = @('RetailControlRemoteSupport-base.exe', 'build-receipt.json', 'SHA256SUMS', 'RustDesk-Source.tar.gz', 'LICENSE.txt', 'SOURCE.txt')
+          $names = @('RetailControlRemoteSupport-base.exe', 'build-receipt.json', 'windows-smoke.json', 'SHA256SUMS', 'RustDesk-Source.tar.gz', 'LICENSE.txt', 'SOURCE.txt')
           $files = @($names | ForEach-Object {
             $path = Join-Path $directory $_
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing release file: $_" }
@@ -115,7 +123,7 @@ jobs:
           @'
           Credential-free RetailControl Remote Support base client, compiled from the pinned RustDesk source.
 
-          Unsigned. Windows profile tests passed; desktop installation, unattended access, and reboot acceptance have not been tested. The client requires a separately signed private enrollment profile before store deployment.
+          Unsigned. Windows profile tests and an isolated installation/service test using a separately compiled synthetic profile key passed. See windows-smoke.json for exactly what was checked. Interactive UAC, real store enrollment, unattended access, and reboot acceptance have not been tested. The client requires a separately signed private enrollment profile before store deployment.
 
           The accompanying build receipt records source and tool versions. The full modified source and license are included both in the client payload and as release downloads.
           '@ | Set-Content -LiteralPath $notes -Encoding utf8
@@ -124,5 +132,5 @@ jobs:
 
       - name: Report verification boundary
         run: |
-          'Native compilation and Windows profile tests completed. No desktop installation or unattended session was performed.' >> $env:GITHUB_STEP_SUMMARY
-          'No private profile, preset password, signing key, Actions artifact upload, or shared dependency cache is used by this workflow.' >> $env:GITHUB_STEP_SUMMARY
+          'Native compilation, Windows profile tests, and an isolated synthetic installation/service check completed. No interactive UAC, real store enrollment, unattended session, or reboot was performed.' >> $env:GITHUB_STEP_SUMMARY
+          'No production profile, preset password, or private signing key is supplied to this workflow. Its temporary synthetic test keys remain on the disposable runner. No Actions artifact upload or shared dependency cache is used.' >> $env:GITHUB_STEP_SUMMARY
