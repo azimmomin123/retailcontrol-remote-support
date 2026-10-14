@@ -1,0 +1,270 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index d909ec3..a4d687a 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -102,6 +102,7 @@ system_shutdown = "4.0"
+ qrcode-generator = "4.1"
+ 
+ [target.'cfg(target_os = "windows")'.dependencies]
++retailcontrol-profile = { path = "libs/retailcontrol-profile" }
+ winapi = { version = "0.3", features = [
+     "winuser",
+     "wincrypt",
+@@ -201,7 +202,7 @@ jni = "0.21"
+ android-wakelock = { git = "https://github.com/rustdesk-org/android-wakelock" }
+ 
+ [workspace]
+-members = ["libs/scrap", "libs/hbb_common", "libs/enigo", "libs/clipboard", "libs/virtual_display", "libs/virtual_display/dylib", "libs/portable", "libs/remote_printer"]
++members = ["libs/scrap", "libs/hbb_common", "libs/enigo", "libs/clipboard", "libs/virtual_display", "libs/virtual_display/dylib", "libs/portable", "libs/remote_printer", "libs/retailcontrol-profile"]
+ exclude = ["vdi/host", "examples/custom_plugin"]
+ 
+ # Patch libxdo-sys to use a stub implementation that doesn't require libxdo
+@@ -211,8 +212,8 @@ libxdo-sys = { path = "libs/libxdo-sys-stub" }
+ 
+ [package.metadata.winres]
+ LegalCopyright = "Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved."
+-ProductName = "RustDesk"
+-FileDescription = "RustDesk Remote Desktop"
++ProductName = "RetailControl Remote Support"
++FileDescription = "RetailControl Remote Support"
+ OriginalFilename = "rustdesk.exe"
+ 
+ [target.'cfg(target_os="windows")'.build-dependencies]
+diff --git a/flutter/windows/runner/Runner.rc b/flutter/windows/runner/Runner.rc
+index 88d1854..63c73ee 100644
+--- a/flutter/windows/runner/Runner.rc
++++ b/flutter/windows/runner/Runner.rc
+@@ -90,12 +90,12 @@ BEGIN
+         BLOCK "040904e4"
+         BEGIN
+             VALUE "CompanyName", "Purslane Tech Pte. Ltd." "\0"
+-            VALUE "FileDescription", "RustDesk Remote Desktop" "\0"
++            VALUE "FileDescription", "RetailControl Remote Support" "\0"
+             VALUE "FileVersion", VERSION_AS_STRING "\0"
+             VALUE "InternalName", "rustdesk" "\0"
+             VALUE "LegalCopyright", "Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved." "\0"
+             VALUE "OriginalFilename", "rustdesk.exe" "\0"
+-            VALUE "ProductName", "RustDesk" "\0"
++            VALUE "ProductName", "RetailControl Remote Support" "\0"
+             VALUE "ProductVersion", VERSION_AS_STRING "\0"
+         END
+     END
+diff --git a/libs/portable/Cargo.toml b/libs/portable/Cargo.toml
+index aacfdcf..fc597fe 100644
+--- a/libs/portable/Cargo.toml
++++ b/libs/portable/Cargo.toml
+@@ -9,10 +9,11 @@ description = "RustDesk Remote Desktop"
+ build = "build.rs"
+ 
+ [dependencies]
++retailcontrol-profile = { path = "../retailcontrol-profile" }
+ brotli = "3.4"
+ dirs = "5.0"
+ md5 = "0.7"
+-winapi = { version = "0.3", features = ["winbase"] }
++winapi = { version = "0.3", features = ["winbase", "winuser"] }
+ 
+ [target.'cfg(target_os = "windows")'.dependencies]
+ windows = { version = "0.61", features = [
+@@ -27,9 +28,9 @@ native-windows-gui = {version = "1.0", default-features = false, features = ["an
+ 
+ [package.metadata.winres]
+ LegalCopyright = "Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved."
+-ProductName = "RustDesk"
++ProductName = "RetailControl Remote Support"
+ OriginalFilename = "rustdesk.exe"
+-FileDescription = "RustDesk Remote Desktop"
++FileDescription = "RetailControl Remote Support"
+ #ProductVersion = ""
+ 
+ [target.'cfg(target_os="windows")'.build-dependencies]
+diff --git a/libs/portable/src/main.rs b/libs/portable/src/main.rs
+index b7ff44e..116fa62 100644
+--- a/libs/portable/src/main.rs
++++ b/libs/portable/src/main.rs
+@@ -10,6 +10,8 @@ use bin_reader::BinaryReader;
+ pub mod bin_reader;
+ #[cfg(windows)]
+ mod ui;
++#[cfg(windows)]
++mod portable_profile;
+ 
+ #[cfg(windows)]
+ const APP_METADATA: &[u8] = include_bytes!("../app_metadata.toml");
+@@ -17,7 +19,7 @@ const APP_METADATA: &[u8] = include_bytes!("../app_metadata.toml");
+ const APP_METADATA: &[u8] = &[];
+ const APP_METADATA_CONFIG: &str = "meta.toml";
+ const META_LINE_PREFIX_TIMESTAMP: &str = "timestamp = ";
+-const APP_PREFIX: &str = "rustdesk";
++const APP_PREFIX: &str = "retailcontrol-remotesupport";
+ const APPNAME_RUNTIME_ENV_KEY: &str = "RUSTDESK_APPNAME";
+ #[cfg(windows)]
+ const SET_FOREGROUND_WINDOW_ENV_KEY: &str = "SET_FOREGROUND_WINDOW";
+@@ -160,6 +162,10 @@ fn execute(path: PathBuf, args: Vec<String>, _ui: bool) {
+             .stderr(Stdio::inherit());
+     }
+     let _child = cmd.spawn();
++    #[cfg(windows)]
++    if _child.is_err() {
++        portable_profile::fail_closed();
++    }
+ 
+     #[cfg(windows)]
+     if _ui {
+@@ -188,16 +194,27 @@ fn main() {
+     }
+     let click_setup = args.is_empty() && arg_exe.to_lowercase().ends_with("install.exe");
+     #[cfg(windows)]
+-    let quick_support = args.is_empty() && win::is_quick_support_exe(&arg_exe);
++    // A renamed download must still open the native installation flow.
++    let quick_support = false;
+     #[cfg(not(windows))]
+     let quick_support = false;
+ 
++    #[cfg(windows)]
++    let profile = portable_profile::PreparedProfile::read_or_exit(APP_PREFIX);
++    #[cfg(windows)]
++    let extraction_dir = Some(profile.directory.clone());
++    #[cfg(not(windows))]
++    let extraction_dir = None;
++
+     let mut ui = false;
+     let reader = BinaryReader::default();
+     if let Some(exe) = setup(
+         reader,
+-        None,
+-        click_setup || args.contains(&"--silent-install".to_owned()),
++        extraction_dir,
++        // Reopening a renamed download must also recover an interrupted cache.
++        args.is_empty()
++            || args.contains(&"--install".to_owned())
++            || args.contains(&"--silent-install".to_owned()),
+         &args,
+         &mut ui,
+     ) {
+@@ -206,7 +223,12 @@ fn main() {
+         } else if quick_support {
+             args = vec!["--quick_support".to_owned()];
+         }
++        #[cfg(windows)]
++        profile.persist_or_exit(&exe);
+         execute(exe, args, ui);
++    } else {
++        #[cfg(windows)]
++        portable_profile::fail_closed();
+     }
+ }
+ 
+diff --git a/src/core_main.rs b/src/core_main.rs
+index 6b437a9..a7d261e 100644
+--- a/src/core_main.rs
++++ b/src/core_main.rs
+@@ -34,6 +34,8 @@ pub fn core_main() -> Option<Vec<String>> {
+     }
+     crate::load_custom_client();
+     #[cfg(windows)]
++    crate::retailcontrol::initialize_or_exit();
++    #[cfg(windows)]
+     if !crate::platform::windows::bootstrap() {
+         // return None to terminate the process
+         return None;
+@@ -119,7 +121,10 @@ pub fn core_main() -> Option<Vec<String>> {
+     if _is_flutter_invoke_new_connection {
+         return core_main_invoke_new_connection(std::env::args());
+     }
+-    let click_setup = cfg!(windows) && args.is_empty() && crate::common::is_setup(&arg_exe);
++    // A first launch opens the native install dialog even after the download is renamed.
++    let click_setup = cfg!(windows)
++        && args.is_empty()
++        && (!crate::platform::is_installed() || crate::common::is_setup(&arg_exe));
+     if click_setup && !config::is_disable_installation() {
+         args.push("--install".to_owned());
+         flutter_args.push("--install".to_string());
+diff --git a/src/flutter_ffi.rs b/src/flutter_ffi.rs
+index 0777443..4df5c0a 100644
+--- a/src/flutter_ffi.rs
++++ b/src/flutter_ffi.rs
+@@ -50,6 +50,8 @@ fn initialize(app_dir: &str, custom_client_config: &str) {
+     } else {
+         crate::read_custom_client(custom_client_config);
+     }
++    #[cfg(windows)]
++    crate::retailcontrol::initialize_or_exit();
+     #[cfg(target_os = "android")]
+     {
+         // flexi_logger can't work when android_logger initialized.
+diff --git a/src/lib.rs b/src/lib.rs
+index 49cb2b7..6f04d94 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -19,6 +19,8 @@ mod rendezvous_mediator;
+ pub use self::rendezvous_mediator::*;
+ /// cbindgen:ignore
+ pub mod common;
++#[cfg(windows)]
++mod retailcontrol;
+ #[cfg(not(any(target_os = "ios")))]
+ pub mod ipc;
+ #[cfg(not(any(
+diff --git a/src/platform/windows.rs b/src/platform/windows.rs
+index b6b5b39..4111975 100644
+--- a/src/platform/windows.rs
++++ b/src/platform/windows.rs
+@@ -1,6 +1,5 @@
+ use super::{CursorData, ResultType};
+ use crate::{
+-    common::PORTABLE_APPNAME_RUNTIME_ENV_KEY,
+     custom_server::*,
+     ipc,
+     privacy_mode::win_topmost_window::{self, WIN_TOPMOST_INJECTED_PROCESS_EXE},
+@@ -2124,12 +2123,9 @@ pub fn prepare_custom_client_update() -> ResultType<bool> {
+ }
+ 
+ pub fn get_license_from_exe_name() -> ResultType<CustomServer> {
+-    let mut exe = std::env::current_exe()?.to_str().unwrap_or("").to_owned();
+-    // if defined portable appname entry, replace original executable name with it.
+-    if let Ok(portable_exe) = std::env::var(PORTABLE_APPNAME_RUNTIME_ENV_KEY) {
+-        exe = portable_exe;
+-    }
+-    get_custom_server_from_string(&exe)
++    // The signed owned profile is the sole routing authority, including callers
++    // outside bootstrap (UI API/key/relay lookup and installation).
++    bail!("Filename server configuration is disabled in this client")
+ }
+ 
+ // We can't directly use `RegKey::set_value` to update the registry value, because it will fail with `ERROR_ACCESS_DENIED`
+@@ -2161,9 +2157,8 @@ pub fn is_win_10_or_greater() -> bool {
+ }
+ 
+ pub fn bootstrap() -> bool {
+-    if let Ok(lic) = get_license_from_exe_name() {
+-        *config::EXE_RENDEZVOUS_SERVER.write().unwrap() = lic.host.clone();
+-    }
++    // RetailControl routing is verified before bootstrap. Do not allow the
++    // outer filename or RUSTDESK_APPNAME to override the signed profile.
+ 
+     #[cfg(debug_assertions)]
+     {
+@@ -3827,19 +3822,9 @@ pub fn alloc_console() {
+ }
+ 
+ fn get_license() -> Option<CustomServer> {
+-    let mut lic: CustomServer = Default::default();
+-    if let Ok(tmp) = get_license_from_exe_name() {
+-        lic = tmp;
+-    } else {
+-        // for back compatibility from migrating from <= 1.2.1 to 1.2.2
+-        lic.key = get_reg("Key");
+-        lic.host = get_reg("Host");
+-        lic.api = get_reg("Api");
+-    }
+-    if lic.key.is_empty() || lic.host.is_empty() {
+-        return None;
+-    }
+-    Some(lic)
++    // Native profile overrides are loaded in every installed process. Importing
++    // legacy filename/registry routing here would defeat the owned profile.
++    None
+ }
+ 
+ pub struct WallPaperRemover {

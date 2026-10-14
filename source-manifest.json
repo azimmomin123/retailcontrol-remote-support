@@ -1,0 +1,127 @@
+{
+  "published": false,
+  "credentials_included": false,
+  "profile_public_key_sha256": "7fe3529ea5b64f4aa3712041f4d63f1333cad81072b4ce1039df4070de01d6f6",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 97,
+      "sha256": "aef25fc5ccd57401af2318eb41cfa4b5c7dc983861915b7e31d774b29134d104"
+    },
+    {
+      "path": ".github/workflows/windows-native.yml",
+      "bytes": 5551,
+      "sha256": "14dccd3dd3bfe299d4c555204ce4efe435d425c8b90a460134d82f310aecb7a2"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 67,
+      "sha256": "3e85a0836b631bf8c5d449d716cae5b0ac499e768db7dd47f6c28fcee8cace2a"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 34523,
+      "sha256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef"
+    },
+    {
+      "path": "README.md",
+      "bytes": 7436,
+      "sha256": "ac2e02dd9a3842b4230e7e71f7a6938a9abcfa97ecd358eb9b576f29589e754c"
+    },
+    {
+      "path": "apply_patch.py",
+      "bytes": 6100,
+      "sha256": "8e9cff734f748628daea8b61cea600553cfd00e301598287c7d43bc043fb453b"
+    },
+    {
+      "path": "integration/portable_profile.rs",
+      "bytes": 2116,
+      "sha256": "ea4d6d6d247bc696ee2aae46774a663c653eb79ebe02081663660271ff03f36e"
+    },
+    {
+      "path": "integration/retailcontrol.rs",
+      "bytes": 2990,
+      "sha256": "06b34f1ca3cfae77a28956bccf3946c6fe9b965786fe3205ba664a4465f588fd"
+    },
+    {
+      "path": "make_source_bundle.py",
+      "bytes": 3948,
+      "sha256": "4a3d931a4f69adb1767c0085df38e603984e05914a6110ed0c938108b37d694d"
+    },
+    {
+      "path": "pack.py",
+      "bytes": 10412,
+      "sha256": "293aa20b85a45b2a5b4c00a63f932780fd54ceda48f927cd2bd6deb75d80fd90"
+    },
+    {
+      "path": "patches/hbb-common.patch",
+      "bytes": 880,
+      "sha256": "73bf0d4167659acda0bdb61df897a0925564e8cdda301c4ff3680853c7ee917b"
+    },
+    {
+      "path": "patches/rustdesk.patch",
+      "bytes": 10312,
+      "sha256": "dabd47fa17784b22ff9f4cea974376f5875e84eb55e2a0e63cecd954e18b4a13"
+    },
+    {
+      "path": "prepare_public_source.py",
+      "bytes": 3216,
+      "sha256": "c3098f0bf0d70607fd16bc9b504d3dbb3443371eb31d0298d895198efc783a61"
+    },
+    {
+      "path": "profile/Cargo.lock",
+      "bytes": 13321,
+      "sha256": "137e2e005cb324f200d8887262a72bd7f28f1106ca8fc1ba7bf73c03696b1c9d"
+    },
+    {
+      "path": "profile/Cargo.toml",
+      "bytes": 360,
+      "sha256": "5ee3943391bf9163cbb8b8dad1bbf988c914824b8ec5100bc996519c8ce1054f"
+    },
+    {
+      "path": "profile/src/bin/profile-check.rs",
+      "bytes": 1083,
+      "sha256": "46e93e8f492a09cc2f080a43b6517fcbdfeb9677a08ffc53ad8dd9074565becd"
+    },
+    {
+      "path": "profile/src/lib.rs",
+      "bytes": 29981,
+      "sha256": "e754969857781c6e3ad06fea7e89ca4accb0407eb54fe9e78f423c6a0bd6277e"
+    },
+    {
+      "path": "profile-public-key.bin",
+      "bytes": 32,
+      "sha256": "7fe3529ea5b64f4aa3712041f4d63f1333cad81072b4ce1039df4070de01d6f6"
+    },
+    {
+      "path": "source_files.py",
+      "bytes": 1477,
+      "sha256": "98793aec50641617196d3a1060eb46298e20ab694cdd7ff4dc1807449eab2f80"
+    },
+    {
+      "path": "tests/test_apply_patch.py",
+      "bytes": 4465,
+      "sha256": "e2adb85e16818b0e6465b0b3df0478cf4a3ce3c5173420c88ee0579c08ff29ea"
+    },
+    {
+      "path": "tests/test_pack.py",
+      "bytes": 5740,
+      "sha256": "4744a21c3a600e7c8c066c922754dc15ce8e53d2da0a4bf1640d3a7633a4c7a3"
+    },
+    {
+      "path": "tests/test_source_export.py",
+      "bytes": 1235,
+      "sha256": "c65462644909ca233bd5332855b36dd5f273c4dc26c7d1ce82868ed708a4ea44"
+    },
+    {
+      "path": "windows-build.ps1",
+      "bytes": 12848,
+      "sha256": "9d45b820da3c69cad7e0ef7ae7798d68a6832fe3063936a7866019db9ce2a431"
+    },
+    {
+      "path": "workflows/windows-native.yml",
+      "bytes": 5551,
+      "sha256": "14dccd3dd3bfe299d4c555204ce4efe435d425c8b90a460134d82f310aecb7a2"
+    }
+  ]
+}

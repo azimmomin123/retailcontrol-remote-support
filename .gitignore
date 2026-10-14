@@ -1,0 +1,9 @@
+target/
+__pycache__/
+*.pyc
+*.pem
+*.exe
+*.zip
+*.tar.gz
+dist/
+build/
