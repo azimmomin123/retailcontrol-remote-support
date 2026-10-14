@@ -70,6 +70,24 @@ class PreparationTests(unittest.TestCase):
         self.assertFalse((source / "profile-public-key.bin").exists())
         self.assertEqual(marker.read_text(), "leave this alone\n")
 
+    def test_native_install_names_the_executable_before_registering_it(self):
+        source = self.clone("install-name")
+        prepare.prepare(source, self.key)
+        windows = (source / "src/platform/windows.rs").read_text()
+        install = windows.split("pub fn install_me(", 1)[1].split(
+            "\npub fn run_after_install(", 1
+        )[0]
+        commands = install.split("let cmds = format!(", 1)[1]
+        # The Flutter payload is rustdesk.exe, while SCM/import/uninstall use
+        # APP_NAME.exe. A successful XCOPY alone leaves a broken native install.
+        # Guard the actual prepared script's dependency order. Windows smoke
+        # separately verifies the resulting files and running service.
+        sequence = ("{copy_exe}", "{rename_exe}", "{import_config}", "{after_install}")
+        positions = [commands.index(item) for item in sequence]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("rename_exe = rename_exe_cmd(&src_exe, &path)?", commands)
+        self.assertEqual(windows.count("pub fn rename_exe_cmd("), 1)
+
     def test_dirty_submodule_is_rejected(self):
         source = self.clone("dirty-common")
         marker = source / "libs/hbb_common/src/config.rs"

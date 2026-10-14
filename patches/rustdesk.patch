@@ -207,7 +207,7 @@ index 49cb2b7..6f04d94 100644
  pub mod ipc;
  #[cfg(not(any(
 diff --git a/src/platform/windows.rs b/src/platform/windows.rs
-index b6b5b39..4111975 100644
+index b6b5b39..ca08114 100644
 --- a/src/platform/windows.rs
 +++ b/src/platform/windows.rs
 @@ -1,6 +1,5 @@
@@ -217,7 +217,23 @@ index b6b5b39..4111975 100644
      custom_server::*,
      ipc,
      privacy_mode::win_topmost_window::{self, WIN_TOPMOST_INJECTED_PROCESS_EXE},
-@@ -2124,12 +2123,9 @@ pub fn prepare_custom_client_update() -> ResultType<bool> {
+@@ -1705,6 +1704,7 @@ copy /Y \"{tmp_path}\\{app_name} Tray.lnk\" \"%PROGRAMDATA%\\Microsoft\\Windows\
+ chcp 65001
+ md \"{path}\"
+ {copy_exe}
++{rename_exe}
+ reg add {subkey} /f
+ reg add {subkey} /f /v DisplayIcon /t REG_SZ /d \"{display_icon}\"
+ reg add {subkey} /f /v DisplayName /t REG_SZ /d \"{app_name}\"
+@@ -1742,6 +1742,7 @@ copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"
+         sleep = if debug { "timeout 300" } else { "" },
+         dels = if debug { "" } else { &dels },
+         copy_exe = copy_exe_cmd(&src_exe, &exe, &path)?,
++        rename_exe = rename_exe_cmd(&src_exe, &path)?,
+         import_config = get_import_config(&exe),
+     );
+     run_cmds(cmds, debug, "install")?;
+@@ -2124,12 +2125,9 @@ pub fn prepare_custom_client_update() -> ResultType<bool> {
  }
  
  pub fn get_license_from_exe_name() -> ResultType<CustomServer> {
@@ -233,7 +249,7 @@ index b6b5b39..4111975 100644
  }
  
  // We can't directly use `RegKey::set_value` to update the registry value, because it will fail with `ERROR_ACCESS_DENIED`
-@@ -2161,9 +2157,8 @@ pub fn is_win_10_or_greater() -> bool {
+@@ -2161,9 +2159,8 @@ pub fn is_win_10_or_greater() -> bool {
  }
  
  pub fn bootstrap() -> bool {
@@ -245,7 +261,7 @@ index b6b5b39..4111975 100644
  
      #[cfg(debug_assertions)]
      {
-@@ -3827,19 +3822,9 @@ pub fn alloc_console() {
+@@ -3827,19 +3824,9 @@ pub fn alloc_console() {
  }
  
  fn get_license() -> Option<CustomServer> {

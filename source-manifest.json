@@ -60,8 +60,8 @@
     },
     {
       "path": "patches/rustdesk.patch",
-      "bytes": 10312,
-      "sha256": "dabd47fa17784b22ff9f4cea974376f5875e84eb55e2a0e63cecd954e18b4a13"
+      "bytes": 11022,
+      "sha256": "6b400e02bb279f37806ca2ae8eecfac6110420f6e64bea2b7e471424cd626013"
     },
     {
       "path": "prepare_public_source.py",
@@ -100,8 +100,8 @@
     },
     {
       "path": "tests/test_apply_patch.py",
-      "bytes": 4465,
-      "sha256": "e2adb85e16818b0e6465b0b3df0478cf4a3ce3c5173420c88ee0579c08ff29ea"
+      "bytes": 5548,
+      "sha256": "fdbf9aec1ed8f0ff45a5b0ebef8831850f7acb2dc934184af0aaf135eb9da4c2"
     },
     {
       "path": "tests/test_pack.py",
@@ -125,8 +125,8 @@
     },
     {
       "path": "windows-smoke.ps1",
-      "bytes": 25087,
-      "sha256": "03359793815c902e3a64df5f511e01c881b5efd43dc51f64380dca18e94ca1fe"
+      "bytes": 29709,
+      "sha256": "a0fe2ef337e2946dfc06a7be19fb62de03838c54a5260e5ec4b71629e40a8260"
     },
     {
       "path": "workflows/windows-native.yml",

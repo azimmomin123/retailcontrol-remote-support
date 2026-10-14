@@ -27,6 +27,7 @@ function Assert-Smoke([bool]$Condition, [string]$Message) {
 function Set-SmokeStage([string]$Name) {
     $script:stage = $Name
     $script:smokeReason = $null
+    $script:lastSmokeProcessExitCode = $null
 }
 function Get-Sha256([string]$Path) {
     (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -69,6 +70,7 @@ function Invoke-RootProcess {
             $process.Kill() # Root only; test-owned descendants are cleaned below.
             Assert-Smoke $false 'A smoke-test process did not exit within its deadline.'
         }
+        $script:lastSmokeProcessExitCode = [int]$process.ExitCode
         $textOut = ''; $textErr = ''
         if ($Capture) {
             # Capture is used only for commands that do not spawn a child tree.
@@ -80,6 +82,45 @@ function Invoke-RootProcess {
 }
 function Get-TestService {
     Get-CimInstance Win32_Service -Filter "Name='RetailControlRemoteSupport'"
+}
+function Write-InstallDiagnostics {
+    # A fixed, bounded schema only. Never emit command lines, paths, config,
+    # arbitrary exception messages, profile data, or child stdout/stderr.
+    $details = [ordered]@{
+        installed_expected_exe_exists = $false
+        installed_unrenamed_exe_exists = $false
+        installed_profile_exists = $false
+        service_exists = $false
+        service_state = 'absent'
+        service_exit_code = $null
+        service_specific_exit_code = $null
+        service_pid = $null
+        service_image_path_matches_expected = $null
+        running_image_path_matches_expected = $null
+        last_process_exit_code = $script:lastSmokeProcessExitCode
+        snapshot_incomplete = $false
+    }
+    try {
+        $details.installed_expected_exe_exists = Test-Path -LiteralPath $installedExe -PathType Leaf
+        $details.installed_unrenamed_exe_exists = Test-Path -LiteralPath (Join-Path $installedDir 'rustdesk.exe') -PathType Leaf
+        $details.installed_profile_exists = Test-Path -LiteralPath $installedProfile -PathType Leaf
+        $service = Get-CimInstance Win32_Service -Filter "Name='RetailControlRemoteSupport'" -OperationTimeoutSec 5
+        if ($null -ne $service) {
+            $details.service_exists = $true
+            $details.service_state = if ($service.State -in @('Stopped', 'Start Pending', 'Stop Pending', 'Running', 'Continue Pending', 'Pause Pending', 'Paused', 'Unknown')) {
+                [string]$service.State
+            } else { 'unrecognized' }
+            $details.service_exit_code = [uint32]$service.ExitCode
+            $details.service_specific_exit_code = [uint32]$service.ServiceSpecificExitCode
+            $details.service_pid = [uint32]$service.ProcessId
+            $details.service_image_path_matches_expected = $service.PathName -ieq ('"' + $installedExe + '" --service')
+            if ($service.ProcessId -gt 0) {
+                $running = Get-CimInstance Win32_Process -Filter "ProcessId=$($service.ProcessId)" -OperationTimeoutSec 5
+                $details.running_image_path_matches_expected = $null -ne $running -and $running.ExecutablePath -ieq $installedExe
+            }
+        }
+    } catch { $details.snapshot_incomplete = $true }
+    Write-Host ('Native installation diagnostic: ' + ($details | ConvertTo-Json -Depth 2 -Compress))
 }
 function Test-Pipe([string]$Suffix) {
     $available = [RetailControlSmoke.Native]::WaitNamedPipe("\\.\pipe\RetailControlRemoteSupport\query$Suffix", 1)
@@ -248,11 +289,14 @@ $cleanupFailures = [Collections.Generic.List[string]]::new()
 $failure = $null
 Set-SmokeStage 'preparation'
 $daemonResult = 'not-tested-no-active-console-session'
-$sasKeyPath = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System'
-$sasKey = Get-Item -LiteralPath $sasKeyPath
-$sasExisted = $sasKey.GetValueNames() -contains 'SoftwareSASGeneration'
-$sasValue = $sasKey.GetValue('SoftwareSASGeneration')
-$sasKind = if ($sasExisted) { $sasKey.GetValueKind('SoftwareSASGeneration') } else { $null }
+$sasRegistrySubKey = 'Software\Microsoft\Windows\CurrentVersion\Policies\System'
+$sasKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($sasRegistrySubKey, $false)
+Assert-Smoke ($null -ne $sasKey) 'The existing SAS policy key could not be read.'
+try {
+    $sasExisted = $sasKey.GetValueNames() -contains 'SoftwareSASGeneration'
+    $sasValue = $sasKey.GetValue('SoftwareSASGeneration', $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+    $sasKind = if ($sasExisted) { $sasKey.GetValueKind('SoftwareSASGeneration') } else { $null }
+} finally { $sasKey.Dispose() }
 New-Item -ItemType Directory -Path $testRoot | Out-Null
 $cacheDir = $cacheRoot # Replaced by this fixture's exact child before any launch.
 try {
@@ -313,6 +357,7 @@ try {
     Assert-Smoke ($launch.ExitCode -eq 0) 'The native portable launcher failed.'
     # Its successful exit means only that it spawned the inner app. Installation
     # itself must produce the expected real SCM registration and live endpoint.
+    Wait-Condition { Test-Path -LiteralPath $installedExe -PathType Leaf } 'The native installer did not create the branded installed executable.'
     $firstServicePid = Assert-ServiceReady
     Assert-Smoke ((Get-Sha256 (Join-Path $installedDir 'librustdesk.dll')) -ceq $syntheticDllHash) 'The installer did not copy the synthetic native DLL.'
     Assert-Smoke ((Get-Sha256 (Join-Path $cacheDir 'retailcontrol-profile.bin')) -ceq $fixture.profile_sha256) 'Portable extraction did not preserve the profile.'
@@ -350,6 +395,7 @@ try {
     $reason = if ($smokeReason) { $smokeReason } else { 'Unexpected harness operation failed.' }
     $failure = 'Windows native smoke failed at stage: ' + $stage + '. ' + $reason
     Write-Host $failure
+    if ($testStarted) { Write-InstallDiagnostics }
 } finally {
     if ($testStarted) {
         try {
@@ -371,10 +417,29 @@ try {
                 if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force -Recurse }
             }
             Get-NetFirewallRule -DisplayName "$appName Service" -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-            $sasKey = Get-Item -LiteralPath $sasKeyPath
-            if ($sasExisted) { $sasKey.SetValue('SoftwareSASGeneration', $sasValue, $sasKind) }
-            elseif ($sasKey.GetValueNames() -contains 'SoftwareSASGeneration') { $sasKey.DeleteValue('SoftwareSASGeneration') }
         } catch { $cleanupFailures.Add('test-installation-state') }
+        try {
+            # Get-Item returns a read-only RegistryKey even for administrators.
+            # Open this existing test-touched key explicitly writable, and close
+            # it regardless of whether restoration or verification succeeds.
+            $sasKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($sasRegistrySubKey, $true)
+            Assert-Smoke ($null -ne $sasKey) 'The existing SAS policy key could not be opened for restoration.'
+            try {
+                if ($sasExisted) {
+                    $sasKey.SetValue('SoftwareSASGeneration', $sasValue, $sasKind)
+                    $restoredValue = $sasKey.GetValue('SoftwareSASGeneration', $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+                    Assert-Smoke ($sasKey.GetValueKind('SoftwareSASGeneration') -eq $sasKind -and
+                        [Collections.StructuralComparisons]::StructuralEqualityComparer.Equals($restoredValue, $sasValue)) 'The original SAS policy was not restored exactly.'
+                } elseif ($sasKey.GetValueNames() -contains 'SoftwareSASGeneration') {
+                    # Native setup creates this single DWORD with value 1. Do
+                    # not delete an unexpected value introduced by another actor.
+                    Assert-Smoke ($sasKey.GetValueKind('SoftwareSASGeneration') -eq [Microsoft.Win32.RegistryValueKind]::DWord -and
+                        $sasKey.GetValue('SoftwareSASGeneration') -eq 1) 'The new SAS policy value differs from the native test value.'
+                    $sasKey.DeleteValue('SoftwareSASGeneration', $false)
+                    Assert-Smoke (-not ($sasKey.GetValueNames() -contains 'SoftwareSASGeneration')) 'The synthetic SAS policy value was not removed.'
+                }
+            } finally { $sasKey.Dispose() }
+        } catch { $cleanupFailures.Add('sas-policy-restoration') }
     }
     foreach ($name in $blockRules) {
         try { Remove-NetFirewallRule -Name $name }
@@ -396,7 +461,11 @@ try {
     catch { $cleanupFailures.Add('synthetic-fixtures') }
 }
 
-if ($cleanupFailures.Count -gt 0) { throw ('Smoke cleanup failed: ' + ($cleanupFailures -join ', ') + '. No success report was written.') }
+if ($cleanupFailures.Count -gt 0) {
+    $cleanupMessage = 'Smoke cleanup failed: ' + ($cleanupFailures -join ', ') + '. No success report was written.'
+    if ($failure) { throw ($failure + ' ' + $cleanupMessage) }
+    throw $cleanupMessage
+}
 if (-not $checksPassed) { throw $failure }
 Assert-Smoke ($null -eq (Get-TestService)) 'The smoke service still exists after cleanup.'
 foreach ($path in $ownedPaths) { Assert-Smoke (-not (Test-Path -LiteralPath $path)) 'Test-owned installation data remains after cleanup.' }
