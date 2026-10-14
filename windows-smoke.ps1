@@ -132,12 +132,21 @@ function Stop-TestService {
 function Stop-TestProcesses {
     # Never kill stock RustDesk or arbitrary matching names. All roots below
     # were absent before this ephemeral test, and executable paths must match.
+    $stopped = [Collections.Generic.List[int]]::new()
     foreach ($process in @(Get-CimInstance Win32_Process)) {
         $path = [string]$process.ExecutablePath
         if ($path -and @($testRoot, $cacheDir, $installedDir).Where({
             $path.StartsWith($_ + '\', [StringComparison]::OrdinalIgnoreCase)
         }).Count -gt 0) {
             Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+            $stopped.Add([int]$process.ProcessId)
+        }
+    }
+    foreach ($processId in $stopped) {
+        $remaining = Get-Process -Id $processId -ErrorAction SilentlyContinue
+        if ($null -ne $remaining) {
+            try { Assert-Smoke ($remaining.WaitForExit(10000)) 'A test-owned process did not stop before cleanup.' }
+            finally { $remaining.Dispose() }
         }
     }
 }

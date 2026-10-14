@@ -125,8 +125,8 @@
     },
     {
       "path": "windows-smoke.ps1",
-      "bytes": 24652,
-      "sha256": "a4aa85dff70feb644e0f9b91690081561a64957c93d81f45f7a2f21979d6a0e3"
+      "bytes": 25087,
+      "sha256": "03359793815c902e3a64df5f511e01c881b5efd43dc51f64380dca18e94ca1fe"
     },
     {
       "path": "workflows/windows-native.yml",
